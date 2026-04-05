@@ -7,6 +7,10 @@ static boolean versionAtLeast(String version) {
 static void configureRepos(RepositoryHandler repositories) {
     repositories.configureEach { ArtifactRepository repo ->
         if (repo instanceof MavenArtifactRepository) {
+            // Leave local file:// repos untouched — they are bundled with the source
+            // tree (e.g. npm packages that ship a local_repo/) and cannot be fetched
+            // from the offline maven store.
+            if (repo.url?.scheme == 'file') return
             repo.setArtifactUrls(new HashSet<URI>())
             repo.url 'file:@mavenRepo@'
             repo.metadataSources {
@@ -15,6 +19,7 @@ static void configureRepos(RepositoryHandler repositories) {
                 artifact()
             }
         } else if (repo instanceof IvyArtifactRepository) {
+            if (repo.url?.scheme == 'file') return
             repo.url 'file:@mavenRepo@'
             repo.layout('maven')
             repo.metadataSources {

@@ -68,6 +68,12 @@ class DependencyExtractor : BuildOperationListener {
 
         cacheAccess.useCache {
             for ((url, _) in urls) {
+                // Skip file:// URLs — local Maven repos (e.g. npm packages that bundle
+                // a local_repo/) are not recorded in Gradle's external resource cache
+                // and cannot be fetched via the network, so they have no place in the
+                // lock file. The offline init.gradle is patched to leave file:// repos
+                // untouched so Gradle can find them from the source tree at build time.
+                if (url.startsWith("file:")) continue
                 fileStoreAndIndexProvider.externalResourceIndex.lookup(url)?.let { cached ->
                     cached.cachedFile?.let { file ->
                         cachedComponentId(file)?.let { componentId ->

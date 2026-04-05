@@ -81,8 +81,10 @@ class Gradle2Nix :
         "--task",
         "-t",
         metavar = "TASK",
-        help = "Gradle tasks to run",
-    ).split(",").default(listOf(RESOLVE_ALL_TASK))
+        help = "Additional Gradle tasks to run alongside ${RESOLVE_ALL_TASK}. " +
+            "Use this to capture dependencies resolved at task-execution time (e.g. " +
+            "Android Lint's detached configurations): --task assembleRelease",
+    ).split(",").default(emptyList())
 
     private val artifacts: List<ArtifactType> by option(
         "--artifacts",
@@ -194,7 +196,11 @@ class Gradle2Nix :
                 gradleArgs,
                 outDir ?: projectDir,
                 projectDir,
-                tasks,
+                // Always include resolveAllArtifacts so the plugin resolves statically-declared
+                // configurations. User-specified tasks are appended so that execution-time
+                // dependencies (e.g. Android Lint detached configurations) are also captured
+                // by DependencyExtractor.
+                listOf(RESOLVE_ALL_TASK) + tasks,
                 artifacts,
                 logger,
                 dumpEvents,
