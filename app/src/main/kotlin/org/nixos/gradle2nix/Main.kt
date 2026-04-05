@@ -191,13 +191,21 @@ class Gradle2Nix :
         // Clear the module dependency file cache so that all artifacts are re-downloaded
         // during this run. Without this, artifacts already in the cache from previous runs
         // will not fire ExternalResourceRead build operations, and will be silently omitted
-        // from the generated lock file. We only clear files-2.1 (the downloaded artifact
-        // store); wrapper/dists (the Gradle distribution) is left intact to avoid
-        // re-downloading Gradle itself.
-        val depsCache = gradleHome.resolve("caches/modules-2/files-2.1")
-        if (depsCache.isDirectory) {
-            logger.info("Clearing Gradle dependency cache at $depsCache to ensure complete lock file...")
-            depsCache.deleteRecursively()
+        // from the generated lock file. We clear both:
+        //   - files-2.1: the downloaded artifact store (JARs, AARs, etc.)
+        //   - metadata-2.*/: the POM/module metadata cache — if this is present, Gradle
+        //     performs version-conflict resolution without re-downloading metadata, so
+        //     conflict-losing versions (e.g. kotlin-stdlib:2.0.21 superseded by 2.2.x)
+        //     never fire ExternalResourceRead and are silently omitted from the lock file.
+        // wrapper/dists (the Gradle distribution) is left intact to avoid re-downloading.
+        val modulesCache = gradleHome.resolve("caches/modules-2")
+        if (modulesCache.isDirectory) {
+            for (entry in modulesCache.listFiles() ?: emptyArray()) {
+                if (entry.name.startsWith("files-") || entry.name.startsWith("metadata-")) {
+                    logger.info("Clearing Gradle cache directory ${entry.name} to ensure complete lock file...")
+                    entry.deleteRecursively()
+                }
+            }
         }
 
         val config =
