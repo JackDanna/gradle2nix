@@ -181,20 +181,26 @@ private fun cachedComponentId(file: File): DependencyCoordinates? {
  *
  * Returns null if the URL doesn't look like a Maven artifact or the name is unknown.
  */
-private fun coordinatesFromUrl(url: String, nameToGroup: Map<String, String>): DependencyCoordinates? =
-    try {
+private fun coordinatesFromUrl(url: String, nameToGroup: Map<String, String>): DependencyCoordinates? {
+    return try {
         val segments = URI(url).path.trimEnd('/').split('/')
-        if (segments.size < 4) return null
-        val version = segments[segments.size - 2]
-        val name = segments[segments.size - 3]
-        val filename = segments.last()
-        // Sanity check: filename must start with "<name>-<version>"
-        if (!filename.startsWith("$name-$version")) return null
-        val group = nameToGroup[name] ?: return null
-        DefaultDependencyCoordinates.parse("$group:$name:$version")
+        if (segments.size < 4) null
+        else {
+            val version = segments[segments.size - 2]
+            val name = segments[segments.size - 3]
+            val filename = segments.last()
+            // Sanity check: filename must start with "<name>-<version>"
+            if (!filename.startsWith("$name-$version")) null
+            else {
+                val group = nameToGroup[name] ?: null
+                if (group == null) null
+                else DefaultDependencyCoordinates.parse("$group:$name:$version")
+            }
+        }
     } catch (_: Throwable) {
         null
     }
+}
 
 @OptIn(ExperimentalSerializationApi::class)
 private fun parseFileMappings(file: File): Map<String, String>? =
