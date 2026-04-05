@@ -187,6 +187,19 @@ class Gradle2Nix :
         val gradleHome =
             System.getenv("GRADLE_USER_HOME")?.let(::File) ?: File("${System.getProperty("user.home")}/.gradle")
         logger.debug("gradleHome=$gradleHome")
+
+        // Clear the module dependency file cache so that all artifacts are re-downloaded
+        // during this run. Without this, artifacts already in the cache from previous runs
+        // will not fire ExternalResourceRead build operations, and will be silently omitted
+        // from the generated lock file. We only clear files-2.1 (the downloaded artifact
+        // store); wrapper/dists (the Gradle distribution) is left intact to avoid
+        // re-downloading Gradle itself.
+        val depsCache = gradleHome.resolve("caches/modules-2/files-2.1")
+        if (depsCache.isDirectory) {
+            logger.info("Clearing Gradle dependency cache at $depsCache to ensure complete lock file...")
+            depsCache.deleteRecursively()
+        }
+
         val config =
             Config(
                 appHome,
